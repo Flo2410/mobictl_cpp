@@ -30,20 +30,29 @@ MobiCtl::MobiCtl() : Node("mobictl") {
   (void)rcutils_logging_set_logger_level(this->get_logger().get_name(), RCUTILS_LOG_SEVERITY_DEBUG);
 #endif
 
+  this->config = {
+      .ultra = true,
+      .illuminance = true,
+      .temperature = true,
+      .battery = true,
+      .imu = true,
+      .euler = true,
+  };
+
   RCLCPP_INFO(this->get_logger(), "Starting MobiCtl");
   RCLCPP_DEBUG(this->get_logger(), "DEBUG ENABLED!\n");
 
-  this->pub_ultra_1 = this->create_publisher<sensor_msgs::msg::Range>("mobictl/ultra_1", 10);
-  this->pub_ultra_2 = this->create_publisher<sensor_msgs::msg::Range>("mobictl/ultra_2", 10);
-  this->pub_ultra_3 = this->create_publisher<sensor_msgs::msg::Range>("mobictl/ultra_3", 10);
-  this->pub_ultra_4 = this->create_publisher<sensor_msgs::msg::Range>("mobictl/ultra_4", 10);
-  this->pub_ultra_5 = this->create_publisher<sensor_msgs::msg::Range>("mobictl/ultra_5", 10);
-  this->pub_ultra_6 = this->create_publisher<sensor_msgs::msg::Range>("mobictl/ultra_6", 10);
-  this->pub_illuminance = this->create_publisher<sensor_msgs::msg::Illuminance>("mobictl/illuminance", 10);
-  this->pub_temperature = this->create_publisher<sensor_msgs::msg::Temperature>("mobictl/temperature", 10);
-  this->pub_battery = this->create_publisher<sensor_msgs::msg::BatteryState>("mobictl/battery", 10);
-  this->pub_imu = this->create_publisher<sensor_msgs::msg::Imu>("mobictl/imu", 10);
-  this->pub_euler = this->create_publisher<geometry_msgs::msg::Vector3>("mobictl/euler", 10);
+  if (this->config.ultra) this->pub_ultra_1 = this->create_publisher<sensor_msgs::msg::Range>("mobictl/ultra_1", 10);
+  if (this->config.ultra) this->pub_ultra_2 = this->create_publisher<sensor_msgs::msg::Range>("mobictl/ultra_2", 10);
+  if (this->config.ultra) this->pub_ultra_3 = this->create_publisher<sensor_msgs::msg::Range>("mobictl/ultra_3", 10);
+  if (this->config.ultra) this->pub_ultra_4 = this->create_publisher<sensor_msgs::msg::Range>("mobictl/ultra_4", 10);
+  if (this->config.ultra) this->pub_ultra_5 = this->create_publisher<sensor_msgs::msg::Range>("mobictl/ultra_5", 10);
+  if (this->config.ultra) this->pub_ultra_6 = this->create_publisher<sensor_msgs::msg::Range>("mobictl/ultra_6", 10);
+  if (this->config.illuminance) this->pub_illuminance = this->create_publisher<sensor_msgs::msg::Illuminance>("mobictl/illuminance", 10);
+  if (this->config.temperature) this->pub_temperature = this->create_publisher<sensor_msgs::msg::Temperature>("mobictl/temperature", 10);
+  if (this->config.battery) this->pub_battery = this->create_publisher<sensor_msgs::msg::BatteryState>("mobictl/battery", 10);
+  if (this->config.imu) this->pub_imu = this->create_publisher<sensor_msgs::msg::Imu>("mobictl/imu", 10);
+  if (this->config.euler) this->pub_euler = this->create_publisher<geometry_msgs::msg::Vector3>("mobictl/euler", 10);
 
   this->sub_joy = this->create_subscription<sensor_msgs::msg::Joy>("web/joy", 10, std::bind(&MobiCtl::joy_callback, this, _1));
   this->sub_cmd_vel = this->create_subscription<geometry_msgs::msg::Twist>("/cmd_vel", 10, std::bind(&MobiCtl::cmd_vel_callback, this, _1));
@@ -74,31 +83,41 @@ void MobiCtl::setup() {
   min_queue_frame(&min_ctx, static_cast<uint8_t>(COMMANDS::FIRMWARE_INFO), {}, 0);
 
   // Init Ulta
-  PayloadBuilder *pb = new PayloadBuilder();
-  pb->append_uint8(0b00111111);
-  pb->append_uint16(1500);
-  min_queue_frame(&min_ctx, static_cast<uint8_t>(COMMANDS::ULTRASONIC_SENSOR), pb->get_payload(), pb->size());
+  if (this->config.ultra) {
+    PayloadBuilder *pb = new PayloadBuilder();
+    pb->append_uint8(0b00111111);
+    pb->append_uint16(1500);
+    min_queue_frame(&min_ctx, static_cast<uint8_t>(COMMANDS::ULTRASONIC_SENSOR), pb->get_payload(), pb->size());
+  }
 
   // Init LUX
-  pb->clear();
-  pb->append_uint16(1500);
-  min_queue_frame(&min_ctx, static_cast<uint8_t>(COMMANDS::BRIGHTNESS), pb->get_payload(), pb->size());
+  if (this->config.illuminance) {
+    pb->clear();
+    pb->append_uint16(1500);
+    min_queue_frame(&min_ctx, static_cast<uint8_t>(COMMANDS::BRIGHTNESS), pb->get_payload(), pb->size());
+  }
 
   // init temp
-  pb->clear();
-  pb->append_uint16(1500);
-  min_queue_frame(&min_ctx, static_cast<uint8_t>(COMMANDS::TEMPERATURE), pb->get_payload(), pb->size());
+  if (this->config.temperature) {
+    pb->clear();
+    pb->append_uint16(1500);
+    min_queue_frame(&min_ctx, static_cast<uint8_t>(COMMANDS::TEMPERATURE), pb->get_payload(), pb->size());
+  }
 
   // Init IMU
-  pb->clear();
-  pb->append_uint8(0b01011100);
-  pb->append_uint16(1500);
-  min_queue_frame(&min_ctx, static_cast<uint8_t>(COMMANDS::IMU), pb->get_payload(), pb->size());
+  if (this->config.imu) {
+    pb->clear();
+    pb->append_uint8(0b01011100);
+    pb->append_uint16(1500);
+    min_queue_frame(&min_ctx, static_cast<uint8_t>(COMMANDS::IMU), pb->get_payload(), pb->size());
+  }
 
   // Init bat
-  pb->clear();
-  pb->append_uint16(10000);
-  min_queue_frame(&min_ctx, static_cast<uint8_t>(COMMANDS::BAT_VOLTAGE), pb->get_payload(), pb->size());
+  if (this->config.battery) {
+    pb->clear();
+    pb->append_uint16(10000);
+    min_queue_frame(&min_ctx, static_cast<uint8_t>(COMMANDS::BAT_VOLTAGE), pb->get_payload(), pb->size());
+  }
 
   delete pb;
 }
@@ -266,7 +285,7 @@ void MobiCtl::handle_min_frame(uint8_t min_id, uint8_t const *min_payload, uint8
           vec3.x = x;
           vec3.y = y;
           vec3.z = z;
-          this->pub_euler->publish(vec3);
+          if (this->config.euler) this->pub_euler->publish(vec3);
           break;
         }
         case IMU_SUB_DEVICES::LINEAR_ACCEL: {

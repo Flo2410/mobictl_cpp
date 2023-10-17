@@ -123,6 +123,15 @@ class MobiCtl : public rclcpp::Node {
     uint8_t w;
   };
 
+  struct mobictl_config {
+    bool ultra;
+    bool illuminance;
+    bool temperature;
+    bool battery;
+    bool imu;
+    bool euler;
+  };
+
   struct min_context min_ctx;
   std::vector<uint8_t> tx_queue;
   SerialPort serial_port;
@@ -155,6 +164,8 @@ class MobiCtl : public rclcpp::Node {
 
   std::vector<uint8_t> extract_subdevices_from_byte(uint8_t byte);
   std::string get_first_serial_port_name(void);
+
+  mobictl_config config;
 
   void loop(void);
 
