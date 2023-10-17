@@ -46,6 +46,7 @@ MobiCtl::MobiCtl() : Node("mobictl") {
   this->pub_euler = this->create_publisher<geometry_msgs::msg::Vector3>("mobictl/euler", 10);
 
   this->sub_joy = this->create_subscription<sensor_msgs::msg::Joy>("web/joy", 10, std::bind(&MobiCtl::joy_callback, this, _1));
+  this->sub_cmd_vel = this->create_subscription<geometry_msgs::msg::Twist>("/cmd_vel", 10, std::bind(&MobiCtl::cmd_vel_callback, this, _1));
 
   timer_ = this->create_wall_timer(std::chrono::milliseconds(0), std::bind(&MobiCtl::loop, this));
 }
@@ -200,6 +201,23 @@ void MobiCtl::joy_callback(const sensor_msgs::msg::Joy &msg) {
       color_selected--;
     this->send_light_preset();
   }
+}
+
+void MobiCtl::cmd_vel_callback(const geometry_msgs::msg::Twist &msg) {
+  // Handle Motor
+  int16_t speed = 500;
+  int16_t rot_speed = 2000;
+
+  int16_t vx = speed * msg.linear.x;
+  int16_t vy = speed * msg.linear.y;
+  int16_t vphi = rot_speed * msg.angular.z;
+
+  PayloadBuilder *pb = new PayloadBuilder();
+  pb->append_int16(vy);  // axis are swapped because of robot coordinate system.
+  pb->append_int16(vx);
+  pb->append_int16(vphi);
+  min_queue_frame(&min_ctx, static_cast<uint8_t>(COMMANDS::MOTOR_CONTROL), pb->get_payload(), pb->size());
+  delete pb;
 }
 
 void MobiCtl::handle_min_frame(uint8_t min_id, uint8_t const *min_payload, uint8_t len_payload) {

@@ -4,6 +4,7 @@
 #include <functional>
 #include <memory>
 
+#include "geometry_msgs/msg/twist.hpp"
 #include "geometry_msgs/msg/vector3.hpp"
 #include "libserial/SerialPort.h"
 #include "min.h"
@@ -145,6 +146,7 @@ class MobiCtl : public rclcpp::Node {
   rclcpp::Publisher<geometry_msgs::msg::Vector3>::SharedPtr pub_euler;
 
   rclcpp::Subscription<sensor_msgs::msg::Joy>::SharedPtr sub_joy;
+  rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr sub_cmd_vel;
 
   rclcpp::TimerBase::SharedPtr timer_;
   bool is_serial_connected = false;
@@ -157,6 +159,7 @@ class MobiCtl : public rclcpp::Node {
   void loop(void);
 
   void joy_callback(const sensor_msgs::msg::Joy& msg);
+  void cmd_vel_callback(const geometry_msgs::msg::Twist& msg);
 
   void send_light_preset(void);
 };
