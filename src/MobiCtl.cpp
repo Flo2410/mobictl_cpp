@@ -48,17 +48,21 @@ MobiCtl::MobiCtl() : Node("mobictl") {
   this->sub_joy = this->create_subscription<sensor_msgs::msg::Joy>("web/joy", 10, std::bind(&MobiCtl::joy_callback, this, _1));
   this->sub_cmd_vel = this->create_subscription<geometry_msgs::msg::Twist>("/cmd_vel", 10, std::bind(&MobiCtl::cmd_vel_callback, this, _1));
 
+  this->declare_parameter("port", "/dev/ttyACM0");
+  RCLCPP_DEBUG(this->get_logger(), "Serial port: %s", this->get_parameter("port").as_string().c_str());
+
   timer_ = this->create_wall_timer(std::chrono::milliseconds(0), std::bind(&MobiCtl::loop, this));
 }
 
 void MobiCtl::setup() {
-  auto port_name = this->get_first_serial_port_name();
-  if (port_name.empty()) {
-    RCLCPP_INFO(this->get_logger(), "No serialport connected.");
-    return;
-  };
+  // auto port_name = this->get_first_serial_port_name();
+  // if (port_name.empty()) {
+  //   RCLCPP_INFO(this->get_logger(), "No serialport connected.");
+  //   return;
+  // };
 
-  this->serial_port.Open(port_name);
+  // this->serial_port.Open(port_name);
+  this->serial_port.Open(this->get_parameter("port").as_string());
   this->serial_port.SetBaudRate(BaudRate::BAUD_115200);
   this->is_serial_connected = true;
 
