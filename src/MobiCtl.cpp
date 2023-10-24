@@ -82,9 +82,10 @@ void MobiCtl::setup() {
 
   min_queue_frame(&min_ctx, static_cast<uint8_t>(COMMANDS::FIRMWARE_INFO), {}, 0);
 
+  PayloadBuilder *pb = new PayloadBuilder();
+
   // Init Ulta
   if (this->config.ultra) {
-    PayloadBuilder *pb = new PayloadBuilder();
     pb->append_uint8(0b00111111);
     pb->append_uint16(1500);
     min_queue_frame(&min_ctx, static_cast<uint8_t>(COMMANDS::ULTRASONIC_SENSOR), pb->get_payload(), pb->size());
