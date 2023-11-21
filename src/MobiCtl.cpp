@@ -109,8 +109,13 @@ void MobiCtl::setup() {
   if (this->config.imu) {
     pb->clear();
     pb->append_uint8(0b01011100);
-    pb->append_uint16(1500);
+    pb->append_uint16(200);
     min_queue_frame(&min_ctx, static_cast<uint8_t>(COMMANDS::IMU), pb->get_payload(), pb->size());
+
+    last_imu_msg.header.frame_id = "imu";
+    last_imu_msg.orientation_covariance = {0.0159, 0, 0, 0, 0.0159, 0, 0, 0, 0.0159};
+    last_imu_msg.angular_velocity_covariance = {0.04, 0, 0, 0, 0.04, 0, 0, 0, 0.04};
+    last_imu_msg.linear_acceleration_covariance = {0.017, 0, 0, 0, 0.017, 0, 0, 0, 0.017};
   }
 
   // Init bat
