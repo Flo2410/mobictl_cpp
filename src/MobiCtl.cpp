@@ -164,28 +164,10 @@ void MobiCtl::send_light_preset() {
   delete pb;
 }
 
+sensor_msgs::msg::Joy last_joy_msg;
 void MobiCtl::joy_callback(const sensor_msgs::msg::Joy &msg) {
-  // Emergency stop
-  if (msg.buttons[1] == 1) {
-    // Handle Motor
-    int16_t speed = 500;
-    int16_t rot_speed = 2000;
-
-    int16_t vy = speed * (msg.axes[5] - msg.axes[4]);
-    int16_t vphi = rot_speed * (-msg.axes[0]);
-
-    PayloadBuilder *pb = new PayloadBuilder();
-    pb->append_int16(0);
-    pb->append_int16(vy);
-    pb->append_int16(vphi);
-    min_queue_frame(&min_ctx, static_cast<uint8_t>(COMMANDS::MOTOR_CONTROL), pb->get_payload(), pb->size());
-    delete pb;
-  } else {
-    min_queue_frame(&min_ctx, static_cast<uint8_t>(COMMANDS::MOTOR_CONTROL), {}, 0);
-  }
-
   // B: Light on/off
-  if (msg.buttons[0] == 1) {
+  if (msg.buttons[0] == 1 && last_joy_msg.buttons[0] != 1) {
     PayloadBuilder *pb = new PayloadBuilder();
     // Turn on Driving lights
     if (!lights) {
@@ -199,8 +181,13 @@ void MobiCtl::joy_callback(const sensor_msgs::msg::Joy &msg) {
     delete pb;
   }
 
+  if (!lights) {
+    last_joy_msg = msg;
+    return;
+  }
+
   // Left: light_preset--
-  if (msg.buttons[6] == 1) {
+  if (msg.axes[6] == 1 && last_joy_msg.axes[6] != 1) {
     if (light_preset == 0)
       light_preset = 3;
     else
@@ -209,27 +196,29 @@ void MobiCtl::joy_callback(const sensor_msgs::msg::Joy &msg) {
   }
 
   // Right: light_preset++
-  if (msg.buttons[7] == 1) {
+  if (msg.axes[6] == -1 && last_joy_msg.axes[6] != -1) {
     light_preset++;
     if (light_preset > 3) light_preset = 0;
     this->send_light_preset();
   }
 
   // Up: color_selected++
-  if (msg.buttons[4] == 1 && light_preset != 0) {
+  if (msg.axes[7] == 1 && last_joy_msg.axes[7] != 1 && light_preset != 0) {
     color_selected++;
     if (color_selected >= colors.size()) color_selected = 0;
     this->send_light_preset();
   }
 
   // Down: color_selected--
-  if (msg.buttons[5] == 1 && light_preset != 0) {
+  if (msg.axes[7] == -1 && last_joy_msg.axes[7] != -1 && light_preset != 0) {
     if (color_selected == 0)
       color_selected = colors.size() - 1;
     else
       color_selected--;
     this->send_light_preset();
   }
+
+  last_joy_msg = msg;
 }
 
 void MobiCtl::cmd_vel_callback(const geometry_msgs::msg::Twist &msg) {
