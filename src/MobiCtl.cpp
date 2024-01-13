@@ -19,6 +19,7 @@
 #include "sensor_msgs/msg/joy.hpp"
 #include "sensor_msgs/msg/range.hpp"
 #include "sensor_msgs/msg/temperature.hpp"
+#include "std_msgs/msg/u_int16.hpp"
 #include "vector"
 
 using LibSerial::BaudRate;
@@ -31,12 +32,13 @@ MobiCtl::MobiCtl() : Node("mobictl") {
 #endif
 
   this->config = {
-      .ultra = true,
-      .illuminance = true,
-      .temperature = true,
-      .battery = true,
-      .imu = true,
-      .euler = true,
+      .ultra = false,
+      .illuminance = false,
+      .temperature = false,
+      .battery = false,
+      .imu = false,
+      .euler = false,
+      .encoder = false,
   };
 
   RCLCPP_INFO(this->get_logger(), "Starting MobiCtl");
@@ -53,8 +55,12 @@ MobiCtl::MobiCtl() : Node("mobictl") {
   if (this->config.battery) this->pub_battery = this->create_publisher<sensor_msgs::msg::BatteryState>("mobictl/battery", 10);
   if (this->config.imu) this->pub_imu = this->create_publisher<sensor_msgs::msg::Imu>("mobictl/imu", 10);
   if (this->config.euler) this->pub_euler = this->create_publisher<geometry_msgs::msg::Vector3>("mobictl/euler", 10);
+  if (this->config.encoder) this->pub_encoder_1 = this->create_publisher<std_msgs::msg::UInt16>("mobictl/encoder_1", 10);
+  if (this->config.encoder) this->pub_encoder_2 = this->create_publisher<std_msgs::msg::UInt16>("mobictl/encoder_2", 10);
+  if (this->config.encoder) this->pub_encoder_3 = this->create_publisher<std_msgs::msg::UInt16>("mobictl/encoder_3", 10);
+  if (this->config.encoder) this->pub_encoder_4 = this->create_publisher<std_msgs::msg::UInt16>("mobictl/encoder_4", 10);
 
-  this->sub_joy = this->create_subscription<sensor_msgs::msg::Joy>("web/joy", 10, std::bind(&MobiCtl::joy_callback, this, _1));
+  this->sub_joy = this->create_subscription<sensor_msgs::msg::Joy>("/joy", 10, std::bind(&MobiCtl::joy_callback, this, _1));
   this->sub_cmd_vel = this->create_subscription<geometry_msgs::msg::Twist>("/cmd_vel", 10, std::bind(&MobiCtl::cmd_vel_callback, this, _1));
 
   this->declare_parameter("port", "/dev/ttyACM0");
@@ -116,6 +122,13 @@ void MobiCtl::setup() {
     last_imu_msg.orientation_covariance = {0.0159, 0, 0, 0, 0.0159, 0, 0, 0, 0.0159};
     last_imu_msg.angular_velocity_covariance = {0.04, 0, 0, 0, 0.04, 0, 0, 0, 0.04};
     last_imu_msg.linear_acceleration_covariance = {0.017, 0, 0, 0, 0.017, 0, 0, 0, 0.017};
+  }
+
+  if (this->config.encoder) {
+    pb->clear();
+    pb->append_uint8(0b00001111);
+    pb->append_uint16(500);
+    min_queue_frame(&min_ctx, static_cast<uint8_t>(COMMANDS::ENCODER), pb->get_payload(), pb->size());
   }
 
   // Init bat
@@ -358,33 +371,34 @@ void MobiCtl::handle_min_frame(uint8_t min_id, uint8_t const *min_payload, uint8
     }
 
     case DATA::ENCODER: {
-      // PayloadBuilder *pb = new PayloadBuilder();
-      // pb->append_uint8(sub_device.sub_device_mask);
+      PayloadBuilder *pb = new PayloadBuilder(min_payload, len_payload);
+      auto sub_device_masks = extract_subdevices_from_byte(pb->read_uint8());
+      std_msgs::msg::UInt16 msg;
+      msg.data = pb->read_uint16();
+      delete pb;
 
-      // switch (static_cast<ENCODER_SUB_DEVICES>(sub_device.sub_device_mask)) {
-      //   case ENCODER_SUB_DEVICES::ENCODER_1: {
-      //     pb->append_uint16(this->encoder_1->get_counter());
-      //     break;
-      //   }
+      switch (static_cast<ENCODER_SUB_DEVICES>(sub_device_masks.front())) {
+        case ENCODER_SUB_DEVICES::ENCODER_1: {
+          this->pub_encoder_1->publish(msg);
+          break;
+        }
 
-      //   case ENCODER_SUB_DEVICES::ENCODER_2: {
-      //     pb->append_uint16(this->encoder_2->get_counter());
-      //     break;
-      //   }
+        case ENCODER_SUB_DEVICES::ENCODER_2: {
+          this->pub_encoder_2->publish(msg);
+          break;
+        }
 
-      //   case ENCODER_SUB_DEVICES::ENCODER_3: {
-      //     pb->append_uint16(this->encoder_3->get_counter());
-      //     break;
-      //   }
+        case ENCODER_SUB_DEVICES::ENCODER_3: {
+          this->pub_encoder_3->publish(msg);
+          break;
+        }
 
-      //   case ENCODER_SUB_DEVICES::ENCODER_4: {
-      //     pb->append_uint16(this->encoder_4->get_counter());
-      //     break;
-      //   }
-      // }
+        case ENCODER_SUB_DEVICES::ENCODER_4: {
+          this->pub_encoder_4->publish(msg);
+          break;
+        }
+      }
 
-      // USB_COM_PORT::queue_payload(DATA::ENCODER, pb);
-      // delete pb;
       break;
     }
 

@@ -15,6 +15,7 @@
 #include "sensor_msgs/msg/joy.hpp"
 #include "sensor_msgs/msg/range.hpp"
 #include "sensor_msgs/msg/temperature.hpp"
+#include "std_msgs/msg/u_int16.hpp"
 #include "string"
 #include "vector"
 
@@ -130,6 +131,7 @@ class MobiCtl : public rclcpp::Node {
     bool battery;
     bool imu;
     bool euler;
+    bool encoder;
   };
 
   struct min_context min_ctx;
@@ -153,6 +155,10 @@ class MobiCtl : public rclcpp::Node {
   rclcpp::Publisher<sensor_msgs::msg::BatteryState>::SharedPtr pub_battery;
   rclcpp::Publisher<sensor_msgs::msg::Imu>::SharedPtr pub_imu;
   rclcpp::Publisher<geometry_msgs::msg::Vector3>::SharedPtr pub_euler;
+  rclcpp::Publisher<std_msgs::msg::UInt16>::SharedPtr pub_encoder_1;
+  rclcpp::Publisher<std_msgs::msg::UInt16>::SharedPtr pub_encoder_2;
+  rclcpp::Publisher<std_msgs::msg::UInt16>::SharedPtr pub_encoder_3;
+  rclcpp::Publisher<std_msgs::msg::UInt16>::SharedPtr pub_encoder_4;
 
   rclcpp::Subscription<sensor_msgs::msg::Joy>::SharedPtr sub_joy;
   rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr sub_cmd_vel;
